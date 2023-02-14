@@ -1,5 +1,7 @@
 package software.tnb.aws.s3.service.openshift;
 
+import cz.xtf.core.openshift.OpenShiftWaiters;
+
 import software.tnb.aws.s3.service.Minio;
 import software.tnb.aws.s3.validation.S3Validation;
 import software.tnb.common.config.OpenshiftConfiguration;
@@ -105,6 +107,8 @@ public class OpenshiftMinio extends Minio implements OpenshiftDeployable, WithNa
         OpenshiftClient.get().services().withName(name()).delete();
         OpenshiftClient.get().apps().deployments().withName(name()).delete();
         OpenshiftClient.get().persistentVolumeClaims().withName(name()).delete();
+        OpenShiftWaiters.get(OpenshiftClient.get(), () -> false).areNoPodsPresent(OpenshiftConfiguration.openshiftDeploymentLabel(), name())
+            .timeout(120_000).waitFor();
     }
 
     @Override

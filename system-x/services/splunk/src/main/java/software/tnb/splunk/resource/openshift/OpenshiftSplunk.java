@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import cz.xtf.core.openshift.OpenShiftWaiters;
 import cz.xtf.core.openshift.helpers.ResourceParsers;
 import io.fabric8.kubernetes.api.model.DeletionPropagation;
 import io.fabric8.kubernetes.api.model.HasMetadata;
@@ -124,6 +125,7 @@ public class OpenshiftSplunk extends Splunk implements ReusableOpenshiftDeployab
         //if CR creates PVC's, they need to be deleted. (usage of the finalizer in CR can in some situations (e.g. failure during operator
         // creation) cause the deletion of CR get stuck)
         OpenshiftClient.get().persistentVolumeClaims().withLabel("app.kubernetes.io/name", "standalone").delete();
+        OpenShiftWaiters.get(OpenshiftClient.get(), () -> false).areNoPodsPresent("name", "splunk-operator").timeout(120_000).waitFor();
     }
 
     @Override

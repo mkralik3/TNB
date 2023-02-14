@@ -38,6 +38,25 @@ public final class JUnitUtils {
             // In parallel, we can't guarantee that the extension will run in the same thread (== same namespace)
             return false;
         }
+        Set<ClassBasedTestDescriptor> testClasses = JUnitUtils.getAllNextTestClasses(extensionContext);
+        if (testClasses == null) {
+            return false;
+        }
+        //Check all classes - nested and containers
+        boolean found = testClasses.stream()
+            .anyMatch(testDescriptor -> AnnotationSupport.findAnnotatedFieldValues(testDescriptor.getTestClass(), RegisterExtension.class)
+                .stream()
+                .anyMatch(extensionClass::isInstance)
+            );
+        if (!found) {
+            LOG.debug("JUnit: No more usages of {} found", extensionClass.getSimpleName());
+        } else {
+            LOG.debug("JUnit: {} will be used in next tests", extensionClass.getSimpleName());
+        }
+        return found;
+    }
+
+    public static Set<ClassBasedTestDescriptor> getAllNextTestClasses(ExtensionContext extensionContext) {
         try {
             Field f = Class.forName("org.junit.jupiter.engine.descriptor.AbstractExtensionContext").getDeclaredField("testDescriptor");
             // Get the root descriptor that has all the scheduled test classes
@@ -66,22 +85,11 @@ public final class JUnitUtils {
                     }
                 }
             }
-            //Check all classes - nested and containers
-            boolean found = testClasses.stream()
-                .anyMatch(it -> AnnotationSupport.findAnnotatedFieldValues(it.getTestClass(), RegisterExtension.class)
-                    .stream()
-                    .anyMatch(extensionClass::isInstance)
-                );
-            if (!found) {
-                LOG.debug("JUnit: No more usages of {} found", extensionClass.getSimpleName());
-            } else {
-                LOG.debug("JUnit: {} will be used in next tests", extensionClass.getSimpleName());
-            }
-            return found;
+            return testClasses;
         } catch (Exception e) {
             LOG.debug("JUnit: Unable to check for extension class usages, returning false");
             LOG.trace("Exception while checking: ", e);
-            return false;
+            return null;
         }
     }
 }
